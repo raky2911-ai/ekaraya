@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EKARAYA — Popup Zona (Prototipe)</title>
+<style>
+:root{
+--bg:#071025; --card:#0b1220; --muted:#9aa4b2; --glass: rgba(255,255,255,0.04);
+--blue:#2563eb; --green:#16a34a; --yellow:#d97706; --red:#dc2626; --purple:#7c3aed;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+}
+*{box-sizing:border-box}
+body{margin:0; min-height:100vh; background:linear-gradient(180deg,#051425 0%, #071024 100%); color:#e6eef6; display:flex; align-items:center; justify-content:center; padding:20px;}
+.wrap{width:100%; max-width:1100px; display:grid; grid-template-columns: 260px 1fr 340px; gap:18px; align-items:start;}
+header{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px}
+header h1{margin:0;font-size:18px}
+header p{margin:0;color:var(--muted);font-size:13px}
+
+/* Left: stats */
+.panel{background:var(--card); border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.04)}
+.stat{display:flex; justify-content:space-between; padding:8px; border-radius:8px; background:rgba(255,255,255,0.02); margin-bottom:8px; font-weight:700}
+.stat small{display:block;color:var(--muted); font-weight:600}
+
+/* Middle: board and controls */
+.board{background:linear-gradient(180deg, rgba(255,255,255,0.012), transparent); border-radius:12px; padding:18px; min-height:360px; display:flex; flex-direction:column; gap:12px; align-items:center}
+.dice{width:120px;height:120px;border-radius:14px; display:flex;align-items:center;justify-content:center;font-size:44px;background:linear-gradient(180deg,#0b1220,#071027); border:1px solid rgba(255,255,255,0.04); cursor:pointer; user-select:none; box-shadow: 0 12px 30px rgba(2,6,23,0.6)}
+.dice.roll{animation: roll 700ms cubic-bezier(.2,.9,.3,1)}
+@keyframes roll{0%{transform:rotate(0) scale(1)}50%{transform:rotate(360deg) scale(1.05)}100%{transform:rotate(720deg) scale(1)}}
+.controls{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
+.zone-btn{padding:10px 14px; border-radius:10px; border:0; cursor:pointer; font-weight:800}
+.zone-blue{background:rgba(37,99,235,0.12); color:var(--blue)}
+.zone-green{background:rgba(16,163,74,0.08); color:var(--green)}
+.zone-yellow{background:rgba(217,119,6,0.08); color:var(--yellow)}
+.zone-red{background:rgba(220,38,38,0.08); color:var(--red)}
+.zone-purple{background:rgba(124,58,237,0.08); color:var(--purple)}
+
+/* right: log */
+.log{background:var(--card); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.04); max-height:420px; overflow:auto}
+.log .entry{font-size:13px; color:var(--muted); margin-bottom:8px}
+
+/* popup modal */
+.modal-backdrop{position:fixed; inset:0; background:rgba(2,6,23,0.6); display:none; align-items:center; justify-content:center; z-index:50}
+.modal{width:92%; max-width:720px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.06)}
+.modal .meta{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.modal .zone-pill{padding:8px 12px; border-radius:999px; font-weight:800}
+.modal .situation{font-size:18px; margin-top:10px}
+.effects{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+.chip{padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.02); font-weight:800}
+.modal .lesson{margin-top:12px; color:var(--muted)}
+.modal .actions{display:flex; gap:10px; margin-top:14px; justify-content:flex-end}
+.btn{padding:10px 14px; border-radius:10px; border:0; cursor:pointer; font-weight:800}
+.btn-primary{background:linear-gradient(90deg,#10b981,#06b6d4); color:#04121a}
+.btn-ghost{background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted)}
+
+@media (max-width:980px){
+.wrap{grid-template-columns:1fr; padding-bottom:40px}
+.board{order:2}
+.panel{order:1}
+.log{order:3}
+}
+</style>
+</head>
+<body>
+<div style="width:100%; max-width:1200px;">
+<header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+<div>
+<h1>EKARAYA — Prototipe Popup Zona</h1>
+<p style="color:var(--muted); margin:0; font-size:13px">Klik dadu → dapat langkah. Klik tombol zona sesuai petak papan → popup kartu (3 contoh per zona).</p>
+</div>
+<div style="color:var(--muted); font-size:13px">Board-style • Dark UI • Secure randomness</div>
+</header>
+
+<div class="wrap" role="application">
+
+<!-- Left stats -->
+<aside class="panel" aria-label="Status pemain">
+<div class="stat"><div>💰 Modal</div><div id="stat-money">10</div></div>
+<div class="stat"><div>📢 Popularitas</div><div id="stat-comm">5</div></div>
+<div class="stat"><div>⚙️ Operasional</div><div id="stat-ops">5</div></div>
+<div class="stat"><div>👥 Tim</div><div id="stat-team">5</div></div>
+<div class="stat"><div>🤝 Relasi</div><div id="stat-rel">3</div></div>
+
+<div style="margin-top:10px; color:var(--muted); font-weight:700">Petunjuk</div>
+<div style="margin-top:6px; color:var(--muted); font-size:13px">
+1) Klik 🎲 untuk mendapat angka langkah (1-6).<br>
+2) Di papan fisik, lihat zona petak. Klik tombol zona di kanan-atas untuk membuka 1 kartu acak dari zona itu.<br>
+3) Di popup: pilih Ambil / Tolak untuk menerapkan konsekuensi ke statistik.
+</div>
+</aside>
+
+<!-- Middle board -->
+<main class="board" aria-label="Board area">
+<div style="display:flex; gap:16px; align-items:center; flex-direction:column; width:100%">
+<div id="dice" class="dice" role="button" tabindex="0" title="Klik untuk mengocok dadu">🎲</div>
+<div style="color:var(--muted); font-size:13px">Klik dadu → angka 1–6</div>
+</div>
+
+<div style="width:100%;">
+<div style="display:flex; justify-content:center; margin-top:6px;" class="controls">
+<button class="zone-btn zone-blue" data-zone="Perencanaan">🔵 Perencanaan</button>
+<button class="zone-btn zone-green" data-zone="Produksi">🟢 Produksi</button>
+<button class="zone-btn zone-yellow" data-zone="Pemasaran">🟡 Pemasaran</button>
+<button class="zone-btn zone-red" data-zone="Risiko & Inovasi">🔴 Risiko & Inovasi</button>
+<button class="zone-btn zone-purple" data-zone="Kolaborasi">🟣 Kolaborasi</button>
+</div>
+</div>
+</main>
+
+<!-- Right log -->
+<aside class="log" aria-live="polite" aria-label="Log permainan">
+<div id="log-entries"></div>
+</aside>
+</div>
+</div>
+
+<!-- Modal -->
+<div id="modal-back" class="modal-backdrop" role="dialog" aria-hidden="true">
+<div class="modal" role="document" aria-modal="true" aria-labelledby="modal-title">
+<div class="meta">
+<div id="modal-zone" class="zone-pill">—</div>
+<div style="color:var(--muted); font-size:13px" id="modal-id">Kartu #</div>
+</div>
+<div class="situation" id="modal-situ">Situasi</div>
+<div class="effects" id="modal-effects"></div>
+<div class="lesson" id="modal-lesson"></div>
+
+<div class="actions">
+<button class="btn btn-ghost" id="modal-close">Tutup</button>
+<button class="btn btn-ghost" id="modal-reject">Tolak</button>
+<button class="btn btn-primary" id="modal-take">Ambil</button>
+</div>
+</div>
+</div>
+
+<script>
+// --- Prototype data: 3 kartu per zona (ambil dari daftar Anda) ---
+const CARDS_BY_ZONE = {
+'Perencanaan': [
+{id: 'P1', situation:'Studi pasar mendalam', ambil:'-1💰 +2📢', tolak:'#ERROR!', lesson:'Investasi informasi penting.'},
+{id: 'P2', situation:'Rencana bisnis disusun profesional', ambil:'-2💰 +2⚙️', tolak:'0💰 +1⚙️', lesson:'Perencanaan matang meningkatkan efisiensi.'},
+{id: 'P3', situation:'Konsultasi dengan mentor bisnis', ambil:'-1💰 +2👥', tolak:'0💰 +1👥', lesson:'Jaringan dan pembelajaran mempercepat kemajuan.'}
+],
+'Produksi': [
+{id: 'PR1', situation:'Investasi mesin baru', ambil:'-3💰 +3⚙️', tolak:'0💰 +1⚙️', lesson:'Modernisasi meningkatkan output.'},
+{id: 'PR2', situation:'Perawatan mesin rutin', ambil:'-1💰 +2⚙️', tolak:'#ERROR!', lesson:'Perawatan mencegah kerusakan besar.'},
+{id: 'PR3', situation:'Ganti bahan baku lebih ramah lingkungan', ambil:'-1💰 +2📢', tolak:'0💰 +1📢', lesson:'Produksi hijau menambah reputasi.'}
+],
+'Pemasaran': [
+{id: 'M1', situation:'Kampanye media sosial', ambil:'-2💰 +3📢', tolak:'#ERROR!', lesson:'Branding digital mempercepat pengakuan.'},
+{id: 'M2', situation:'Diskon besar-besaran', ambil:'-2💰 +2📢', tolak:'0💰 +1📢', lesson:'Daya tarik cepat tapi untung tipis.'},
+{id: 'M3', situation:'Pameran produk', ambil:'-3💰 +3📢 +1🤝', tolak:'0💰 +1📢', lesson:'Interaksi langsung memperluas relasi.'}
+],
+'Risiko & Inovasi': [
+{id: 'R1', situation:'Investasi teknologi baru', ambil:'-2💰 +3⚙️', tolak:'0💰 +1⚙️', lesson:'Inovasi membawa risiko tapi nilai tinggi.'},
+{id: 'R2', situation:'Coba pasar luar kota', ambil:'-2💰 +2📢', tolak:'0💰 +0📢', lesson:'Ekspansi berisiko tapi melatih adaptasi.'},
+{id: 'R3', situation:'Produksi batch besar', ambil:'-3💰 +3⚙️', tolak:'0💰 +1⚙️', lesson:'Skala besar, risiko besar.'}
+],
+'Kolaborasi': [
+{id: 'K1', situation:'Bentuk koperasi bersama', ambil:'-2💰 +3🤝', tolak:'0💰 +1🤝', lesson:'Bersama lebih kuat.'},
+{id: 'K2', situation:'Bagi pengalaman bisnis ke peserta lain', ambil:'-1👥 +2🤝', tolak:'0👥 +1🤝', lesson:'Ilmu dibagi = jaringan tumbuh.'},
+{id: 'K3', situation:'Bantu UMKM tetangga', ambil:'-1💰 +2🤝 +1📢', tolak:'0💰 +0🤝', lesson:'Solidaritas memperkuat ekosistem.'}
+]
+};
+
+// --- Stats state ---
+const state = { money:10, comm:5, ops:5, team:5, rel:3 };
+function updateStatsUI(){
+document.getElementById('stat-money').textContent = state.money;
+document.getElementById('stat-comm').textContent = state.comm;
+document.getElementById('stat-ops').textContent = state.ops;
+document.getElementById('stat-team').textContent = state.team;
+document.getElementById('stat-rel').textContent = state.rel;
+}
+
+// --- Utilities: secure random int ---
+function secureRandomInt(min, maxExclusive){
+const range = maxExclusive - min;
+if(range <= 0) return min;
+const arr = new Uint32Array(1);
+crypto.getRandomValues(arr);
+const rnd01 = arr[0] / 4294967296; // [0,1)
+return min + Math.floor(rnd01 * range);
+}
+function pickRandom(arr){ return arr[secureRandomInt(0, arr.length)]; }
+
+// --- parse and display tokens ---
+function parseTokens(str){
+if(!str || str.trim()==='' || str.includes('#ERROR!')) return [];
+return str.split(/\s+/).filter(Boolean);
+}
+function applyToken(token){
+const m = token.match(/^([+-]?\d+)(.*)$/);
+if(!m) return null;
+return {val: parseInt(m[1],10), icon: m[2]||'', raw: token};
+}
+
+// --- Log ---
+const logEl = document.getElementById('log-entries');
+function log(msg){
+const d = document.createElement('div'); d.className='entry'; d.textContent = `${new Date().toLocaleTimeString()} — ${msg}`;
+logEl.prepend(d);
+}
+
+// --- Modal elements ---
+const modalBack = document.getElementById('modal-back');
+const modalZone = document.getElementById('modal-zone');
+const modalSitu = document.getElementById('modal-situ');
+const modalEffects = document.getElementById('modal-effects');
+const modalLesson = document.getElementById('modal-lesson');
+const modalId = document.getElementById('modal-id');
+
+let currentCard = null;
+
+function openModal(card, zoneColor){
+currentCard = card;
+modalZone.textContent = zoneColor.label;
+modalZone.style.background = zoneColor.bg;
+modalZone.style.color = zoneColor.fg;
+modalId.textContent = 'Kartu ' + card.id;
+modalSitu.textContent = card.situation;
+modalLesson.textContent = card.lesson || '';
+
+// Build effects: first 2-3 tokens from ambil, last 2 tokens from tolak
+modalEffects.innerHTML = '';
+const ambilTokens = parseTokens(card.ambil).slice(0,3);
+const tolakTokens = parseTokens(card.tolak);
+const tolakDisplay = tolakTokens.length ? tolakTokens.slice(-2) : [];
+
+// Ambil (left)
+ambilTokens.forEach(t=>{
+const el = document.createElement('div'); el.className='chip'; el.textContent = t; modalEffects.appendChild(el);
+});
+
+// spacer
+const sep = document.createElement('div'); sep.style.flex='1'; modalEffects.appendChild(sep);
+
+// Tolak (right)
+tolakDisplay.forEach(t=>{
+const el = document.createElement('div'); el.className='chip'; el.textContent = t; modalEffects.appendChild(el);
+});
+
+// show modal
+modalBack.style.display = 'flex';
+modalBack.setAttribute('aria-hidden','false');
+}
+
+function closeModal(){ modalBack.style.display='none'; modalBack.setAttribute('aria-hidden','true'); currentCard = null; }
+
+// --- Apply consequences to state from an array of token strings ---
+function applyConsequences(tokens){
+const parsed = tokens.map(applyToken).filter(Boolean);
+parsed.forEach(p=>{
+const ic = p.icon;
+const v = p.val;
+if(ic.includes('💰')) state.money += v;
+else if(ic.includes('📢')) state.comm += v;
+else if(ic.includes('⚙️') || ic.includes('⚙')) state.ops += v;
+else if(ic.includes('👥')) state.team += v;
+else if(ic.includes('🤝')) state.rel += v;
+// ignore unrecognized icons for now
+});
+// clamp
+state.money = Math.max(-9999, state.money);
+state.comm = Math.max(-99, state.comm);
+state.ops = Math.max(-99, state.ops);
+state.team = Math.max(-99, state.team);
+state.rel = Math.max(-99, state.rel);
+updateStatsUI();
+}
+
+// --- Zone colors mapping for UI ---
+const ZONE_STYLE = {
+'Perencanaan': {label:'🔵 Perencanaan', bg:'rgba(37,99,235,0.12)', fg: 'var(--blue)'},
+'Produksi': {label:'🟢 Produksi', bg:'rgba(16,163,74,0.08)', fg: 'var(--green)'},
+'Pemasaran': {label:'🟡 Pemasaran', bg:'rgba(217,119,6,0.08)', fg: 'var(--yellow)'},
+'Risiko & Inovasi': {label:'🔴 Risiko & Inovasi', bg:'rgba(220,38,38,0.08)', fg: 'var(--red)'},
+'Kolaborasi': {label:'🟣 Kolaborasi', bg:'rgba(124,58,237,0.08)', fg: 'var(--purple)'}
+};
+
+// --- Hook up zone buttons ---
+document.querySelectorAll('.zone-btn').forEach(btn=>{
+btn.addEventListener('click', ()=>{
+const zone = btn.getAttribute('data-zone');
+const bucket = CARDS_BY_ZONE[zone];
+if(!bucket || bucket.length===0){ log(`Zona ${zone} kosong.`); return; }
+const card = pickRandom(bucket);
+openModal(card, ZONE_STYLE[zone] || {label:zone, bg:'', fg:''});
+log(`Muncul kartu dari zona ${zone}: ${card.situation}`);
+});
+});
+
+// --- Dice functionality ---
+const diceEl = document.getElementById('dice');
+diceEl.addEventListener('click', rollDice);
+diceEl.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' ') rollDice(); });
+
+function rollDice(){
+diceEl.classList.remove('roll'); void diceEl.offsetWidth; diceEl.classList.add('roll');
+const n = secureRandomInt(1,7);
+setTimeout(()=>{ diceEl.classList.remove('roll'); diceEl.textContent = n; log(`Dadu: ${n}`); }, 700);
+}
+
+// --- Modal buttons ---
+document.getElementById('modal-close').addEventListener('click', ()=>{ closeModal(); log('Popup ditutup.'); });
+document.getElementById('modal-take').addEventListener('click', ()=>{
+if(!currentCard) return;
+const toks = parseTokens(currentCard.ambil).slice(0,3);
+applyConsequences(toks);
+log(`Ambil: ${currentCard.situation} -> ${toks.join(' ') || '(tidak ada efek)'}`);
+closeModal();
+});
+document.getElementById('modal-reject').addEventListener('click', ()=>{
+if(!currentCard) return;
+const toks = parseTokens(currentCard.tolak);
+const chosen = toks.length ? toks.slice(-2) : [];
+applyConsequences(chosen);
+log(`Tolak: ${currentCard.situation} -> ${chosen.join(' ') || '(tidak ada efek)'}`);
+closeModal();
+});
+
+// close modal on backdrop click (but not when clicking inside modal)
+modalBack.addEventListener('click', (e)=>{ if(e.target === modalBack) closeModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+// init
+updateStatsUI();
+log('Prototipe siap — klik dadu atau pilih zona.');
+</script>
+</body>
+</html>
